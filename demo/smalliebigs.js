@@ -1,6 +1,12 @@
 class SmallieBigs {
+    _defaultOptions = {
+        debug: false,
+        maximumResolution: 3000,
+        quality: 0.8};
+
     constructor(options) {
-        this.options = options;
+        this.options = Object.assign(this._defaultOptions, options);
+        this._log(`SmallieBigs contructed with options: ${JSON.stringify(this.options)}`);
     }
 
     _blobToArrayBuffer(blob) {
@@ -117,10 +123,13 @@ class SmallieBigs {
         this._log('exiting _drawImage');
     }
 
-    async processImage(f, max, quality) {
+    async processImage(f, options) {
         this._log('entering processImage');
+        options = Object.assign(this.options, options);
+        this._log(`processImage called with options: ${JSON.stringify(options)}`);
         try {
-            f = await this._processImageInternal(f, max, quality);
+            f = await this._processImageInternal(
+                f, options.maximumResolution, options.quality);
             this._log('exiting processImage');
             return f;
         }

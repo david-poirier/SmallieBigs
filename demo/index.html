@@ -4,7 +4,12 @@
     <title>SmallieBigs demo</title>
     <script src="smalliebigs.js"></script>
     <script>
-        var sb = new SmallieBigs({debug: true});
+        var sb = new SmallieBigs({
+            debug: true, 
+            maximumResolution: 3000, 
+            quality: 0.8,
+            forceJpeg: true
+        });
 
         async function _downloadFile(f) {
             var a = document.createElement('a');
@@ -18,7 +23,7 @@
             for (var i=0; i<that.files.length; i++) {
                 var f = that.files[i];
                 console.log(`file in size: ${f.size}`);
-                var fout = await sb.processImage(f, {forceJpeg: true});
+                var fout = await sb.processImage(f);
                 console.log(`file out size: ${fout.size}`);
                 await _downloadFile(fout);
             }

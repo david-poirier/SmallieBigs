@@ -203,7 +203,7 @@ class SmallieBigs {
             buffer_out = await this._copyExif(buffer_in, buffer_out);
             blob_out = new Blob([buffer_out], {type: blob_out.type});
         }
-        let f_out = new File([blob_out], (forceJpeg) ? f_in.name + '.jpg' : f_in.name, {type: blob_out.type});
+        let f_out = new File([blob_out], (forceJpeg && !f_in.name.endsWith('.jpg')) ? f_in.name + '.jpg' : f_in.name, {type: blob_out.type});
         if (f_out.size < f_in.size) {
             this._log('processed image is smaller, exiting _processImageInternal');
             return f_out;

@@ -2,7 +2,9 @@ class SmallieBigs {
     _defaultOptions = {
         debug: false,
         maximumResolution: 3000,
-        quality: 0.8};
+        quality: 0.8,
+        forceJpeg: false
+    };
 
     constructor(options) {
         this.options = Object.assign(this._defaultOptions, options);
@@ -73,7 +75,7 @@ class SmallieBigs {
       });
     }
 
-    _canvasToBlob(canvas, type, quality) {
+    _canvasToBlob(canvas, type, quality, forceJpeg) {
       return new Promise((resolve, reject) => {
         this._log('entering _canvasToBlob');
         function _resolve(result, that) {
@@ -81,7 +83,7 @@ class SmallieBigs {
           resolve(result);
         }
         canvas.onerror = reject;
-        canvas.toBlob((result) => _resolve(result, this), type, quality);
+        canvas.toBlob((result) => _resolve(result, this), (forceJpeg) ? 'image/jpeg' : type, quality);
       });
     }
 
@@ -129,7 +131,7 @@ class SmallieBigs {
         this._log(`processImage called with options: ${JSON.stringify(options)}`);
         try {
             f = await this._processImageInternal(
-                f, options.maximumResolution, options.quality);
+                f, options.maximumResolution, options.quality, options.forceJpeg);
             this._log('exiting processImage');
             return f;
         }
@@ -145,7 +147,7 @@ class SmallieBigs {
         let dv_in = new DataView(b_in);
         // ensure it's JPEG
         if (dv_in.getUint8(0) != 255 || dv_in.getUint8(1) != 216) {
-            this._log('not a jpeg, exiting _copyExif');
+            this._log('input image not a jpeg, exiting _copyExif');
             return b_out;
         }
         // find APP1 in old img
@@ -170,11 +172,11 @@ class SmallieBigs {
         offset = 2;
         let dv_out = new DataView(b_out);
         while (offset < b_out.byteLength) {
-            this._log('inserting APP1 between APP0 and the rest of the image');
             let m1 = dv_out.getUint8(offset);
             let m2 = dv_out.getUint8(offset + 1);
             let size = dv_out.getUint16(offset + 2);
             if (m1==255 && m2==224) {
+                this._log('inserting APP1 between APP0 and the rest of the image');
                 let pre_app1 = b_out.slice(0, offset + 2 + size);
                 let post_app1 = b_out.slice(offset + 2 + size);
                 let blob = new Blob([pre_app1, app1, post_app1]);
@@ -188,20 +190,20 @@ class SmallieBigs {
         return b_out;
     }
 
-    async _processImageInternal(f_in, max, quality) {
+    async _processImageInternal(f_in, max, quality, forceJpeg) {
         this._log('entering _processImageInternal');
         let buffer_in = await this._blobToArrayBuffer(f_in);
         let dataurl_in = await this._blobToDataUrl(f_in);
         let img = await this._dataUrlToImage(dataurl_in);
         let c = this._makeSizedCanvas(img.width, img.height, max);
         this._drawImage(c, img);
-        let blob_out = await this._canvasToBlob(c, f_in.type, quality);
+        let blob_out = await this._canvasToBlob(c, f_in.type, quality, forceJpeg);
         if (blob_out.type == 'image/jpeg') {
             let buffer_out = await this._blobToArrayBuffer(blob_out);
             buffer_out = await this._copyExif(buffer_in, buffer_out);
             blob_out = new Blob([buffer_out], {type: blob_out.type});
         }
-        let f_out = new File([blob_out], f_in.name, {type: blob_out.type});
+        let f_out = new File([blob_out], (forceJpeg) ? f_in.name + '.jpg' : f_in.name, {type: blob_out.type});
         if (f_out.size < f_in.size) {
             this._log('processed image is smaller, exiting _processImageInternal');
             return f_out;
